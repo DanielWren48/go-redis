@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"go-redis/client"
 	"log"
 	"log/slog"
 	"net"
+	"time"
 )
 
 const defaulListenAddress = ":5001"
@@ -20,6 +23,8 @@ type Server struct {
 	addPeerCh chan *Peer
 	quitCh    chan struct{}
 	msgCh     chan []byte
+
+	kv *KV
 }
 
 func NewServer(cfg Config) *Server {
@@ -32,6 +37,7 @@ func NewServer(cfg Config) *Server {
 		addPeerCh: make(chan *Peer),
 		quitCh:    make(chan struct{}),
 		msgCh:     make(chan []byte),
+		kv:        NewKV(),
 	}
 }
 
@@ -50,7 +56,16 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleRawMessage(rawMsg []byte) error {
-	fmt.Println(string(rawMsg))
+	cmd, err := parseCommand(string(rawMsg))
+	if err != nil {
+		return err
+	}
+
+	switch v := cmd.(type) {
+	case SetCommand:
+		return s.kv.Set([]byte(v.key), []byte(v.val))
+	}
+
 	return nil
 }
 
@@ -92,5 +107,17 @@ func (s *Server) handleConn(conn net.Conn) {
 
 func main() {
 	server := NewServer(Config{})
-	log.Fatal(server.Start())
+	go func() {
+		log.Fatal(server.Start())
+	}()
+
+	time.Sleep(time.Second)
+
+	client := client.New("localhost:5001")
+	if err := client.Set(context.Background(), "foo", "bar"); err != nil {
+		log.Fatal(err)
+	}
+
+	time.Sleep(time.Second)
+	fmt.Println(server.kv.data)
 }

@@ -18,7 +18,7 @@ type Command interface {
 }
 
 type SetCommand struct {
-	key, val string
+	key, val []byte
 }
 
 func parseCommand(raw string) (Command, error) {
@@ -33,25 +33,22 @@ func parseCommand(raw string) (Command, error) {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("Read %s\n", v.Type())
-
 		if v.Type() == resp.Array {
 			for _, value := range v.Array() {
 				switch value.String() {
 				case CommandSET:
-					fmt.Println(len(v.Array()))
 					if (len(v.Array())) != 3 {
 						return nil, fmt.Errorf("invalid set command")
 					}
-					setCmd := &SetCommand{
-						key: value.Array()[1].String(),
-						val: value.Array()[2].String(),
+					cmd := &SetCommand{
+						key: value.Array()[1].Bytes(),
+						val: value.Array()[2].Bytes(),
 					}
-					return setCmd, nil
+					return cmd, nil
 				}
 			}
 		}
+		return nil, fmt.Errorf("invalid or unknown command recieved 1: %s", raw)
 	}
-
-	return "foo", nil
+	return nil, fmt.Errorf("invalid or unknown command recieved: %s", raw)
 }
