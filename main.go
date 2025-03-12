@@ -63,7 +63,7 @@ func (s *Server) handleRawMessage(rawMsg []byte) error {
 
 	switch v := cmd.(type) {
 	case SetCommand:
-		return s.kv.Set([]byte(v.key), []byte(v.val))
+		return s.kv.Set(v.key, v.val)
 	}
 
 	return nil
@@ -113,8 +113,8 @@ func main() {
 
 	time.Sleep(time.Second)
 
-	client := client.New("localhost:5001")
-	if err := client.Set(context.Background(), "foo", "bar"); err != nil {
+	c := client.New("localhost:5001")
+	if err := c.Set(context.Background(), "foo", "bar"); err != nil {
 		log.Fatal(err)
 	}
 

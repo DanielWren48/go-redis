@@ -41,8 +41,8 @@ func parseCommand(raw string) (Command, error) {
 						return nil, fmt.Errorf("invalid set command")
 					}
 					cmd := &SetCommand{
-						key: value.Array()[1].Bytes(),
-						val: value.Array()[2].Bytes(),
+						key: v.Array()[1].Bytes(),
+						val: v.Array()[2].Bytes(),
 					}
 					return cmd, nil
 				}
