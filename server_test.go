@@ -1,21 +1,29 @@
-package client
+package main
 
 import (
 	"context"
 	"fmt"
+	"go-redis/client"
 	"log"
 	"sync"
 	"testing"
 	"time"
 )
 
-func TestNewClients(t *testing.T) {
+func TestServerWithClients(t *testing.T) {
+	server := NewServer(Config{})
+	go func() {
+		log.Fatal(server.Start())
+	}()
+
+	time.Sleep(time.Second)
+
 	nClients := 5
 	wg := sync.WaitGroup{}
 	wg.Add(nClients)
 	for i := 0; i < nClients; i++ {
 		go func(it int) {
-			c, err := New("localhost:5001")
+			c, err := client.New("localhost:5001")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -36,24 +44,9 @@ func TestNewClients(t *testing.T) {
 	}
 
 	wg.Wait()
-}
 
-func TestNewClient(t *testing.T) {
-	c, err := New("localhost:5001")
-	if err != nil {
-		log.Fatal(err)
-	}
 	time.Sleep(time.Second)
-	for i := 0; i < 10; i++ {
-		fmt.Println("SET =>", fmt.Sprintf("bar%d", i))
-		if err := c.Set(context.Background(), fmt.Sprintf("foo_%d", i), fmt.Sprintf("bar_%d", i)); err != nil {
-			log.Fatal(err)
-		}
-
-		val, err := c.Get(context.Background(), fmt.Sprintf("foo_%d", i))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("GET =>", val)
+	if len(server.peers) != 0 {
+		t.Errorf("expected 0 peers, got %d", len(server.peers))
 	}
 }
