@@ -1,7 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"log"
 	"net"
+
+	"github.com/tidwall/resp"
 )
 
 type Peer struct {
@@ -21,17 +26,37 @@ func NewPeer(conn net.Conn, msgCh chan Message) *Peer {
 }
 
 func (p *Peer) readLoop() error {
-	buf := make([]byte, 1024)
+	rd := resp.NewReader(p.conn)
 	for {
-		n, err := p.conn.Read((buf))
-		if err != nil {
-			return err
+		v, _, err := rd.ReadValue()
+		if err == io.EOF {
+			break
 		}
-		msgBuf := make([]byte, n)
-		copy(msgBuf, buf[:n])
-		p.msgCh <- Message{
-			data: msgBuf,
-			peer: p,
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var cmd Command
+		if v.Type() == resp.Array {
+			rawCMD := v.Array()[0]
+			switch rawCMD.String() {
+			case CommandGET:
+				cmd = GetCommand{
+					key: v.Array()[1].Bytes(),
+				}
+			case CommandSET:
+				cmd = SetCommand{
+					key: v.Array()[1].Bytes(),
+					val: v.Array()[2].Bytes(),
+				}
+			default:
+				fmt.Println("got this unhandled command", rawCMD)
+			}
+			p.msgCh <- Message{
+				cmd:  cmd,
+				peer: p,
+			}
 		}
 	}
+	return nil
 }

@@ -1,13 +1,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"go-redis/client"
 	"log"
 	"log/slog"
 	"net"
-	"time"
 )
 
 const defaulListenAddress = ":5001"
@@ -17,7 +14,7 @@ type Config struct {
 }
 
 type Message struct {
-	data []byte
+	cmd  Command
 	peer *Peer
 }
 
@@ -61,12 +58,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleMessage(msg Message) error {
-	cmd, err := parseCommand(string(msg.data))
-	if err != nil {
-		return err
-	}
-
-	switch v := cmd.(type) {
+	switch v := msg.cmd.(type) {
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
 
@@ -121,27 +113,5 @@ func (s *Server) handleConn(conn net.Conn) {
 
 func main() {
 	server := NewServer(Config{})
-	go func() {
-		log.Fatal(server.Start())
-	}()
-
-	time.Sleep(time.Second)
-
-	c, err := client.New("localhost:5001")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := c.Set(context.Background(), "foo", "bar"); err != nil {
-		log.Fatal(err)
-	}
-
-	time.Sleep(time.Second)
-
-	val, err := c.Get(context.Background(), "foo")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("got this value back: ", val)
-
-	fmt.Println(server.kv.data)
+	log.Fatal(server.Start())
 }
