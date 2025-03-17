@@ -43,6 +43,10 @@ func (p *Peer) readLoop() error {
 		if v.Type() == resp.Array {
 			rawCMD := v.Array()[0]
 			switch rawCMD.String() {
+			case CommandClient:
+				cmd = ClientCommand{
+					value: v.Array()[1].String(),
+				}
 			case CommandGET:
 				cmd = GetCommand{
 					key: v.Array()[1].Bytes(),
@@ -51,6 +55,10 @@ func (p *Peer) readLoop() error {
 				cmd = SetCommand{
 					key: v.Array()[1].Bytes(),
 					val: v.Array()[2].Bytes(),
+				}
+			case CommandHELLO:
+				cmd = HelloCommand{
+					value: v.Array()[1].String(),
 				}
 			default:
 				fmt.Println("got this unhandled command", rawCMD)
